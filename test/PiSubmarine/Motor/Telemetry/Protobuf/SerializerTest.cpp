@@ -1,16 +1,28 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "PiSubmarine/Depth/Telemetry/Api/IProviderMock.h"
-#include "PiSubmarine/Depth/Telemetry/Protobuf/Deserializer.h"
-#include "PiSubmarine/Depth/Telemetry/Protobuf/Serializer.h"
+#include "PiSubmarine/Motor/Telemetry/Api/IProvider.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/Deserializer.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/Serializer.h"
 #include "PiSubmarine/Telemetry/Api/IRawSourceMock.h"
 
-namespace PiSubmarine::Depth::Telemetry::Protobuf
+namespace PiSubmarine::Motor::Telemetry::Protobuf
 {
-    TEST(SerializerTest, RoundTripsDepthState)
+    class ProviderMock final : public Api::IProvider
     {
-        Api::IProviderMock providerMock;
-        const Api::State expectedState{.Depth = 3.5_m};
+    public:
+        MOCK_METHOD((Error::Api::Result<Api::State>), GetState, (), (const, override));
+    };
+
+    TEST(SerializerTest, RoundTripsMotorState)
+    {
+        ProviderMock providerMock;
+        const Api::State expectedState{
+            .Operational = Api::OperationalState::Degraded,
+            .ActiveFaults = static_cast<Api::Faults>(
+                static_cast<uint32_t>(Api::Faults::Overcurrent)
+                | static_cast<uint32_t>(Api::Faults::OpenLoad)),
+            .ActiveWarnings = Api::Warnings::Temperature};
 
         EXPECT_CALL(providerMock, GetState())
             .WillOnce(testing::Return(Error::Api::Result<Api::State>(expectedState)));

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "PiSubmarine/Depth/Telemetry/Api/IProvider.h"
+#include "PiSubmarine/Motor/Telemetry/Api/IProvider.h"
 #include "PiSubmarine/Telemetry/Api/IRawSource.h"
 
-namespace PiSubmarine::Depth::Telemetry::Protobuf
+namespace PiSubmarine::Motor::Telemetry::Protobuf
 {
     class Deserializer final : public Api::IProvider
     {

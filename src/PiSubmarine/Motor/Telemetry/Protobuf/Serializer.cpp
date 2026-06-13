@@ -1,12 +1,12 @@
-#include "PiSubmarine/Depth/Telemetry/Protobuf/Serializer.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/Serializer.h"
 
 #include <string>
 
-#include "Depth.pb.h"
-#include "PiSubmarine/Depth/Telemetry/Protobuf/ErrorCode.h"
+#include "Motor.pb.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/ErrorCode.h"
 #include "PiSubmarine/Error/Api/MakeError.h"
 
-namespace PiSubmarine::Depth::Telemetry::Protobuf
+namespace PiSubmarine::Motor::Telemetry::Protobuf
 {
     Serializer::Serializer(const Api::IProvider& provider)
         : m_Provider(provider)
@@ -21,11 +21,10 @@ namespace PiSubmarine::Depth::Telemetry::Protobuf
             return std::unexpected(stateResult.error());
         }
 
-        ::pisubmarine::depth::telemetry::protobuf::State protoState;
-        if (stateResult->Depth.has_value())
-        {
-            protoState.set_depth_meters(stateResult->Depth->Value);
-        }
+        ::pisubmarine::motor::telemetry::protobuf::State protoState;
+        protoState.set_operational(static_cast<int32_t>(stateResult->Operational));
+        protoState.set_active_faults(static_cast<uint32_t>(stateResult->ActiveFaults));
+        protoState.set_active_warnings(static_cast<uint32_t>(stateResult->ActiveWarnings));
 
         std::string serialized;
         if (!protoState.SerializeToString(&serialized))

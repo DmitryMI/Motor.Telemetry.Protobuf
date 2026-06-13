@@ -1,18 +1,35 @@
-#include "PiSubmarine/Depth/Telemetry/Protobuf/Deserializer.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/Deserializer.h"
 
-#include "Depth.pb.h"
-#include "PiSubmarine/Depth/Telemetry/Protobuf/ErrorCode.h"
+#include <optional>
+
+#include "Motor.pb.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/ErrorCode.h"
 #include "PiSubmarine/Error/Api/MakeError.h"
 
-namespace PiSubmarine::Depth::Telemetry::Protobuf
+namespace PiSubmarine::Motor::Telemetry::Protobuf
 {
     namespace
     {
-        [[nodiscard]] Error::Api::Error MakeDepthTelemetryError(
+        [[nodiscard]] Error::Api::Error MakeMotorTelemetryError(
             const Error::Api::ErrorCondition condition,
             const ErrorCode code)
         {
             return Error::Api::MakeError(condition, make_error_code(code));
+        }
+
+        [[nodiscard]] std::optional<Api::OperationalState> ParseOperationalState(const int32_t value)
+        {
+            switch (value)
+            {
+                case 0:
+                    return Api::OperationalState::Operational;
+                case 1:
+                    return Api::OperationalState::Degraded;
+                case 2:
+                    return Api::OperationalState::Faulted;
+                default:
+                    return std::nullopt;
+            }
         }
     }
 
@@ -29,19 +46,26 @@ namespace PiSubmarine::Depth::Telemetry::Protobuf
             return std::unexpected(rawResult.error());
         }
 
-        ::pisubmarine::depth::telemetry::protobuf::State protoState;
+        ::pisubmarine::motor::telemetry::protobuf::State protoState;
         if (!protoState.ParseFromArray(reinterpret_cast<const char*>(rawResult->data()), static_cast<int>(rawResult->size())))
         {
-            return std::unexpected(MakeDepthTelemetryError(
+            return std::unexpected(MakeMotorTelemetryError(
                 Error::Api::ErrorCondition::ContractError,
                 ErrorCode::DeserializationFailed));
         }
 
-        Api::State state{};
-        if (protoState.has_depth_meters())
+        const auto operational = ParseOperationalState(protoState.operational());
+        if (!operational.has_value())
         {
-            state.Depth = Meters{protoState.depth_meters()};
+            return std::unexpected(MakeMotorTelemetryError(
+                Error::Api::ErrorCondition::ContractError,
+                ErrorCode::InvalidPayload));
         }
+
+        Api::State state{
+            .Operational = *operational,
+            .ActiveFaults = static_cast<Api::Faults>(protoState.active_faults()),
+            .ActiveWarnings = static_cast<Api::Warnings>(protoState.active_warnings())};
 
         return state;
     }

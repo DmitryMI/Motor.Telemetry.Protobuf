@@ -2,11 +2,11 @@
 
 #include <gtest/gtest.h>
 
-#include "PiSubmarine/Depth/Telemetry/Protobuf/Deserializer.h"
-#include "PiSubmarine/Depth/Telemetry/Protobuf/ErrorCode.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/Deserializer.h"
+#include "PiSubmarine/Motor/Telemetry/Protobuf/ErrorCode.h"
 #include "PiSubmarine/Telemetry/Api/IRawSourceMock.h"
 
-namespace PiSubmarine::Depth::Telemetry::Protobuf
+namespace PiSubmarine::Motor::Telemetry::Protobuf
 {
     TEST(DeserializerTest, RejectsInvalidPayload)
     {
@@ -22,5 +22,21 @@ namespace PiSubmarine::Depth::Telemetry::Protobuf
 
         ASSERT_FALSE(result.has_value());
         EXPECT_EQ(result.error().Cause, make_error_code(ErrorCode::DeserializationFailed));
+    }
+
+    TEST(DeserializerTest, RejectsInvalidOperationalState)
+    {
+        ::PiSubmarine::Telemetry::Api::IRawSourceMock rawSourceMock;
+        const std::vector<std::byte> payload{
+            std::byte{0x08}, std::byte{0x07}};
+
+        EXPECT_CALL(rawSourceMock, GetRaw())
+            .WillOnce(testing::Return(Error::Api::Result<std::vector<std::byte>>(payload)));
+
+        Deserializer deserializer(rawSourceMock);
+        const auto result = deserializer.GetState();
+
+        ASSERT_FALSE(result.has_value());
+        EXPECT_EQ(result.error().Cause, make_error_code(ErrorCode::InvalidPayload));
     }
 }
